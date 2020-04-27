@@ -1,0 +1,3 @@
+title=PhoneController
+author=Eric Sang
+orientation=portrait
