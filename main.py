@@ -10,7 +10,8 @@ from plyer import gyroscope
 
 from IPPopup import IPPopup
 
-import Functions, Constants
+import Functions
+import Constants
 
 
 class PhoneControllerApp(App):
@@ -47,7 +48,7 @@ class PhoneControllerApp(App):
     def get_data(self):
         try:
             if self.sensor_cond:
-                return "A:{}|G:{}".format(accelerometer.acceleration, gyroscope.orientation)
+                return "a:{}|g:{}".format(accelerometer.acceleration, gyroscope.orientation)
             return "Sensors failed to initialize"
         except:
             return "No data"
@@ -57,8 +58,8 @@ class PhoneControllerApp(App):
         data = self.get_data()
 
         try:
-            # self.socket.sendall(bytes(data))
-            self.socket.sendall(bytes(data, "ascii"))
+            self.socket.sendall(bytes(data))
+            # self.socket.sendall(bytes(data, "ascii"))
             # data = self.s.recv(1024)
             # print('Received', repr(data))
         except:
