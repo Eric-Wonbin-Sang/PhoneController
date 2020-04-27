@@ -3,82 +3,98 @@ from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.clock import Clock
+from kivy.uix.button import Button
 
 from plyer import accelerometer
 from plyer import gyroscope
 
+from IPPopup import IPPopup
 
-def add_to_layout(layout, *widget_list):
-    for widget in widget_list:
-        layout.add_widget(widget)
-    return layout
+import Functions, Constants
 
 
-# host = socket.gethostname()
-host = "192.168.1.27"
-port = 12345  # The same port as used by the server
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((host, port))
-
-
-class ACSApp(App):
+class PhoneControllerApp(App):
 
     def __init__(self):
 
-        super(ACSApp, self).__init__()
+        super(PhoneControllerApp, self).__init__()
 
-        self.box_layout = BoxLayout(
+        self.socket = self.get_socket(host_ip=Constants.host_ip, port=Constants.port)
+        self.box_layout = BoxLayout(pos_hint={'center_x': .5, 'center_y': .5})
+        self.ip_popup_button = IPPopupButton(init_host_ip=Constants.host_ip, phone_controller_app=self)
+        self.accelerometer_label = Label(text="accelerometer_label", color=(1, 1, 1, 1))
 
-        )
-
-        self.accelerometer_label = Label(
-            text="accelerometer_label",
-            pos_hint={'center_x': .5, 'center_y': .5},
-            color=(1, 1, 1, 1)
-        )
-
-        self.sensor_cond = False
-        try:
-            accelerometer.enable()
-            gyroscope.enable()
-            self.sensor_cond = True
-        except:
-            print("Failed to start accelerometer")
-
+        self.sensor_cond = self.get_sensor_cond()
         Clock.schedule_interval(self.update, .1)  # 24 calls per second
 
     def build(self):
-
-        add_to_layout(
+        Functions.add_to_layout(
             self.box_layout,
+            self.ip_popup_button,
             self.accelerometer_label
         )
-
         return self.box_layout
 
-    def update(self, dt):
+    def get_sensor_cond(self):
         try:
-            txt = "Accelerometer does not exist"
-            if self.sensor_cond:
-                txt = "Accelerometer:\nX = %.2f\nY = %.2f\nZ = %2.f " % (
-                    accelerometer.acceleration[0],  # X
-                    accelerometer.acceleration[1],  # Y
-                    accelerometer.acceleration[2]   # Z
-                )
+            accelerometer.enable()
+            gyroscope.enable()
+            return True
         except:
-            txt = "Cannot read accelerometer"
+            print("Failed to start accelerometer")
+            return False
 
-        s.sendall(bytes("A:{}|G:{}".format(accelerometer.acceleration, gyroscope.orientation)))
-        # data = s.recv(1024)
-        # print('Received', repr(data))
+    def get_data(self):
+        try:
+            if self.sensor_cond:
+                return "A:{}|G:{}".format(accelerometer.acceleration, gyroscope.orientation)
+            return "Sensors failed to initialize"
+        except:
+            return "No data"
 
-        self.accelerometer_label.text = txt
-        print(self.accelerometer_label.text)
+    def update(self, dt):
+
+        data = self.get_data()
+
+        try:
+            # self.socket.sendall(bytes(data))
+            self.socket.sendall(bytes(data, "ascii"))
+            # data = self.s.recv(1024)
+            # print('Received', repr(data))
+        except:
+            print("Server died")
+
+        self.accelerometer_label.text = data
+        print(data)
+
+    def get_socket(self, host_ip, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((host_ip, port))
+        except:
+            print("Couldn't create a new socket")
+        return s
+
+    def update_socket(self, new_ip):
+        self.socket.close()
+        self.socket = self.get_socket(host_ip=new_ip, port=Constants.port)
+
+
+class IPPopupButton(Button):
+
+    def __init__(self, init_host_ip, phone_controller_app):
+        super(IPPopupButton, self).__init__(
+            text="IP Button",
+        )
+        self.ip_popup = IPPopup(init_host_ip=init_host_ip, phone_controller_app=phone_controller_app)
+
+    def on_press(self):
+        self.ip_popup.open()
 
 
 def main():
 
-    ACSApp().run()
+    PhoneControllerApp().run()
 
 
 main()

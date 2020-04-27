@@ -22,6 +22,8 @@ while True:
 
     except socket.error:
         print("Disconnected with device")
-        break
+        s.listen(1)
+        conn, address = s.accept()
 
-conn.close()
+
+# conn.close()
